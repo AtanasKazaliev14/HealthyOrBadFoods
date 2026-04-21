@@ -18,27 +18,24 @@ reader = load_reader()
 
 UNHEALTHY_DATABASE = {
     # E-numbers
-    "E620": {"en": "Monosodium glutamate", "bg": "Мононатриев глутамат", "risk": 2},
-    "E621": {"en": "MSG", "bg": "Мононатриев глутамат", "risk": 2},
-    "E627": {"en": "Disodium guanylate", "bg": "Динатриев гуанилат", "risk": 2},
-    "E631": {"en": "Disodium inosinate", "bg": "Динатриев инозинат", "risk": 2},
     "E950": {"en": "Acesulfame K", "bg": "Ацесулфам К", "risk": 3},
     "E951": {"en": "Aspartame", "bg": "Аспартам", "risk": 3},
-    "E952": {"en": "Cyclamate", "bg": "Цикламат", "risk": 3},
-    "E954": {"en": "Saccharin", "bg": "Захарин", "risk": 3},
 
-    # Text ingredients
-    "caffeine": {"en": "Caffeine", "bg": "Кофеин", "risk": 2},
-    "taurine": {"en": "Taurine", "bg": "Таурин", "risk": 1},
-    "sucralose": {"en": "Sucralose", "bg": "Сукралоза", "risk": 3},
+    # synonyms (много важно!)
     "acesulfame k": {"en": "Acesulfame K", "bg": "Ацесулфам К", "risk": 3},
-    "aspartame": {"en": "Aspartame", "bg": "Аспартам", "risk": 3},
+    "ацесулфам": {"en": "Acesulfame K", "bg": "Ацесулфам К", "risk": 3},
+
+    "sucralose": {"en": "Sucralose", "bg": "Сукралоза", "risk": 3},
+    "сукралоза": {"en": "Sucralose", "bg": "Сукралоза", "risk": 3},
+
+    "caffeine": {"en": "Caffeine", "bg": "Кофеин", "risk": 2},
+    "кофеин": {"en": "Caffeine", "bg": "Кофеин", "risk": 2},
+
+    "taurine": {"en": "Taurine", "bg": "Таурин", "risk": 1},
+    "таурин": {"en": "Taurine", "bg": "Таурин", "risk": 1},
+
     "benzoic acid": {"en": "Benzoic acid", "bg": "Бензоена киселина", "risk": 2},
-    "sorbic acid": {"en": "Sorbic acid", "bg": "Сорбинова киселина", "risk": 1},
-    "glucuronolactone": {"en": "Glucuronolactone", "bg": "Глюкуронолактон", "risk": 1},
-    "inositol": {"en": "Inositol", "bg": "Инозитол", "risk": 1},
-    "ginseng": {"en": "Ginseng", "bg": "Женшен", "risk": 1},
-    "guarana": {"en": "Guarana", "bg": "Гуарана", "risk": 2}
+    "бензоена": {"en": "Benzoic acid", "bg": "Бензоена киселина", "risk": 2}
 }
 # Image preprocessing
 def preprocess_image(image):

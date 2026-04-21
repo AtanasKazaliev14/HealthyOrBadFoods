@@ -5,157 +5,128 @@ from PIL import Image
 import re
 import cv2
 
-# ===============================
-# Load OCR Reader
-# ===============================
+
+# Load OCR
+
 @st.cache_resource
 def load_reader():
     return easyocr.Reader(['en'])
 
 reader = load_reader()
 
-# ===============================
-# Harmful E-numbers Dictionary
-# ===============================
-UNHEALTHY_E_NUMBERS = {
-    "E620": {
-        "en": "Monosodium glutamate (MSG)",
-        "bg": "Мононатриев глутамат"
-    },
-    "E621": {
-        "en": "MSG variant",
-        "bg": "Вариант на мононатриев глутамат"
-    },
-    "E627": {
-        "en": "Disodium guanylate",
-        "bg": "Динатриев гуанилат"
-    },
-    "E631": {
-        "en": "Disodium inosinate",
-        "bg": "Динатриев инозинат"
-    },
-    "E950": {
-        "en": "Acesulfame K",
-        "bg": "Ацесулфам К"
-    },
-    "E951": {
-        "en": "Aspartame",
-        "bg": "Аспартам"
-    },
-    "E952": {
-        "en": "Cyclamate",
-        "bg": "Цикламат"
-    },
-    "E954": {
-        "en": "Saccharin",
-        "bg": "Захарин"
-    }
+# Database of Ingredients
+
+UNHEALTHY_DATABASE = {
+    # E-numbers
+    "E620": {"en": "Monosodium glutamate", "bg": "Мононатриев глутамат", "risk": 2},
+    "E621": {"en": "MSG", "bg": "Мононатриев глутамат", "risk": 2},
+    "E627": {"en": "Disodium guanylate", "bg": "Динатриев гуанилат", "risk": 2},
+    "E631": {"en": "Disodium inosinate", "bg": "Динатриев инозинат", "risk": 2},
+    "E950": {"en": "Acesulfame K", "bg": "Ацесулфам К", "risk": 3},
+    "E951": {"en": "Aspartame", "bg": "Аспартам", "risk": 3},
+    "E952": {"en": "Cyclamate", "bg": "Цикламат", "risk": 3},
+    "E954": {"en": "Saccharin", "bg": "Захарин", "risk": 3},
+
+    # Text ingredients
+    "caffeine": {"en": "Caffeine", "bg": "Кофеин", "risk": 2},
+    "taurine": {"en": "Taurine", "bg": "Таурин", "risk": 1},
+    "sucralose": {"en": "Sucralose", "bg": "Сукралоза", "risk": 3},
+    "acesulfame k": {"en": "Acesulfame K", "bg": "Ацесулфам К", "risk": 3},
+    "aspartame": {"en": "Aspartame", "bg": "Аспартам", "risk": 3},
+    "benzoic acid": {"en": "Benzoic acid", "bg": "Бензоена киселина", "risk": 2},
+    "sorbic acid": {"en": "Sorbic acid", "bg": "Сорбинова киселина", "risk": 1},
+    "glucuronolactone": {"en": "Glucuronolactone", "bg": "Глюкуронолактон", "risk": 1},
+    "inositol": {"en": "Inositol", "bg": "Инозитол", "risk": 1},
+    "ginseng": {"en": "Ginseng", "bg": "Женшен", "risk": 1},
+    "guarana": {"en": "Guarana", "bg": "Гуарана", "risk": 2}
 }
-
-# ===============================
-# Image Preprocessing
-# ===============================
+# Image preprocessing
 def preprocess_image(image):
-    img_array = np.array(image)
-
-    # Convert to grayscale
-    gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
-
-    # Blur for better OCR
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-
-    # Threshold for clearer text
-    _, thresh = cv2.threshold(
-        blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
-    )
-
+    img = np.array(image)
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     return thresh
 
 # ===============================
-# Normalize OCR Mistakes
+# Normalize OCR mistakes
 # ===============================
 def normalize_e_number(e):
     e = e.upper()
-    e = e.replace(" ", "")
-    e = e.replace("-", "")
-    e = e.replace(".", "")
-
-    # Common OCR corrections
-    e = e.replace("O", "0")
-    e = e.replace("I", "1")
-    e = e.replace("Z", "2")
-
+    e = e.replace(" ", "").replace("-", "").replace(".", "")
+    e = e.replace("O", "0").replace("I", "1").replace("Z", "2")
     return e
 
-# ===============================
-# Extract E-numbers
-# ===============================
-def detect_e_numbers(text):
-    raw_matches = re.findall(r'[Ee][\s\-\.]?\d{3}', text)
+# Detect everything
 
-    normalized = [normalize_e_number(e) for e in raw_matches]
+def detect_all(text):
+    text_lower = text.lower()
+    found = []
 
-    return list(set(normalized))
+    # Detect E-numbers
+    e_matches = re.findall(r'[Ee][\s\-\.]?\d{3}', text)
+    for e in e_matches:
+        e_clean = normalize_e_number(e)
+        if e_clean in UNHEALTHY_DATABASE:
+            found.append(e_clean)
+
+    # Detect text ingredients
+    for key in UNHEALTHY_DATABASE:
+        if not key.startswith("E"):
+            if key in text_lower:
+                found.append(key)
+
+    return list(set(found))
+
+# Scoring system
+
+def calculate_score(found_items):
+    return sum(UNHEALTHY_DATABASE[item]["risk"] for item in found_items)
+
+def get_health_label(score):
+    if score == 0:
+        return "🟢 Healthy"
+    elif score <= 3:
+        return "🟡 Moderate"
+    else:
+        return "🔴 Unhealthy"
 
 # ===============================
-# Streamlit UI
+# UI
 # ===============================
-st.title("🧪 Ingredient Scanner (E-number Detector)")
-st.write(
-    "Upload an image of ingredients. The app will detect harmful additives "
-    "and show their names in English and Bulgarian."
-)
+st.title("🧪 AI Ingredient Scanner")
+st.write("Scan ingredients and detect potentially harmful substances.")
 
-uploaded_file = st.file_uploader(
-    "📤 Upload an image",
-    type=["jpg", "png", "jpeg"]
-)
+uploaded_file = st.file_uploader("📤 Upload image", type=["jpg", "png", "jpeg"])
 
 if uploaded_file:
     image = Image.open(uploaded_file)
+    st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    st.image(image, caption="📷 Uploaded Image", use_column_width=True)
+    st.write("🔍 Processing...")
 
-    st.write("🔍 Processing image and extracting text...")
+    processed = preprocess_image(image)
 
-    processed_image = preprocess_image(image)
-
-    # OCR
-    results = reader.readtext(processed_image, detail=0)
-
+    results = reader.readtext(processed, detail=0)
     extracted_text = " ".join(results)
 
     st.subheader("📄 Extracted Text")
     st.write(extracted_text)
 
-    # Detect E-numbers
-    found_e_numbers = detect_e_numbers(extracted_text)
+    found_items = detect_all(extracted_text)
 
-    st.subheader("📊 Detected E-numbers")
+    st.subheader("🧪 Analysis")
 
-    if found_e_numbers:
-        st.write(", ".join(found_e_numbers))
-    else:
-        st.info("No E-numbers detected.")
+    if found_items:
+        score = calculate_score(found_items)
+        label = get_health_label(score)
 
-    # Check harmful ones
-    st.subheader("⚠️ Harmful Additives Check")
+        st.markdown(f"### {label} (Score: {score})")
 
-    found_unhealthy = []
-
-    for e in found_e_numbers:
-        if e in UNHEALTHY_E_NUMBERS:
-            found_unhealthy.append(e)
-
-    if found_unhealthy:
-        st.error("🚨 Harmful additives detected!")
-
-        for e in found_unhealthy:
+        for item in found_items:
+            data = UNHEALTHY_DATABASE[item]
             st.markdown(
-                f"**{e}** → "
-                f"{UNHEALTHY_E_NUMBERS[e]['en']} "
-                f"(**{UNHEALTHY_E_NUMBERS[e]['bg']}**)"
+                f"**{data['en']}** ({data['bg']}) → Risk: {data['risk']}"
             )
     else:
-        if found_e_numbers:
-            st.success("✅ No known harmful E-numbers detected.")
+        st.success("✅ No risky ingredients detected.")
